@@ -43,13 +43,15 @@ public class MessageActuatorApplication implements ApplicationRunner {
     @Override
     public void run(ApplicationArguments args) throws Exception {
         resultChannel.subscribe(m -> {
-            System.out.println("Result channel " + m.getPayload());
+            for(Map.Entry<String, Object> entry : m.getHeaders().entrySet()) {
+                System.out.println(entry.getKey() + " : " + entry.getValue());
+            }
         });
 
-        String[] names = {"Alan Turing", "Elon Musk", "Thomas Edison"};
+        Person[] names = {new Person("Alan", "Turing"), new Person("Elon", "Musk"), new Person("Thomas", "Edison")};
 
-        for(String name : names) {
-            Message<String> message = MessageBuilder.withPayload(name).setHeader("type", "Hello").build();
+        for(Person name : names) {
+            Message<Person> message = MessageBuilder.withPayload(name).setHeader("privateKey", "12345").build();
             System.out.println(message.getPayload());
             directChannel.send(message);
         }

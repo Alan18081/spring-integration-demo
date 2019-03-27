@@ -2,7 +2,6 @@ package com.alex.apps.messageactuator;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
-import org.springframework.integration.annotation.ServiceActivator;
 import org.springframework.integration.router.AbstractMessageRouter;
 import org.springframework.messaging.Message;
 import org.springframework.messaging.MessageChannel;
