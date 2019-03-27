@@ -8,10 +8,14 @@ import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.integration.annotation.InboundChannelAdapter;
 import org.springframework.integration.annotation.IntegrationComponentScan;
 import org.springframework.integration.channel.DirectChannel;
 import org.springframework.integration.support.MessageBuilder;
 import org.springframework.messaging.Message;
+import org.springframework.util.concurrent.ListenableFuture;
+import org.springframework.util.concurrent.ListenableFutureCallback;
+import org.springframework.util.concurrent.SuccessCallback;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -26,7 +30,7 @@ import java.util.concurrent.Future;
 public class MessageActuatorApplication implements ApplicationRunner {
 
     @Autowired
-    private PrinterGateway printerGateway;
+    private EnhancedPrinterGateway gateway;
 
     @Autowired
     @Qualifier("directChannel")
@@ -42,30 +46,31 @@ public class MessageActuatorApplication implements ApplicationRunner {
 
     @Override
     public void run(ApplicationArguments args) throws Exception {
-        resultChannel.subscribe(m -> {
-            for(Map.Entry<String, Object> entry : m.getHeaders().entrySet()) {
-                System.out.println(entry.getKey() + " : " + entry.getValue());
+//        resultChannel.subscribe(m -> {
+//            System.out.println("Result: " + m.getPayload());
+//        });
+
+        Person alan = new Person("Alan", "Turing");
+
+        Message<Person> message = MessageBuilder
+                .withPayload(new Person("Alan", "Turing"))
+                .setHeader("replyChannel", resultChannel)
+                .build();
+
+        ListenableFuture<String> result = gateway.print(alan);
+        result.addCallback(new ListenableFutureCallback<String>() {
+            @Override
+            public void onFailure(Throwable throwable) {
+
+            }
+
+            @Override
+            public void onSuccess(String s) {
+                System.out.println("Success callback");
+                System.out.println(s);
             }
         });
-
-        Person[] names = {new Person("Alan", "Turing"), new Person("Elon", "Musk"), new Person("Thomas", "Edison")};
-
-        for(Person name : names) {
-            Message<Person> message = MessageBuilder.withPayload(name).setHeader("privateKey", "12345").build();
-            System.out.println(message.getPayload());
-            directChannel.send(message);
-        }
-
-        List<Future<Message<Integer>>> futures = new ArrayList<>();
-
-        for(int i = 0; i < 10; i++) {
-            Message<Integer> message = MessageBuilder.withPayload(i).setPriority(i).build();
-            futures.add(this.printerGateway.print(message));
-        }
-
-        for(Future<Message<Integer>> item : futures) {
-            System.out.println(item.get().getPayload());
-        }
+        System.out.println("New result: " + result);
     }
 
 

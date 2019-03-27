@@ -14,6 +14,7 @@ import org.springframework.integration.channel.QueueChannel;
 import org.springframework.integration.config.EnableIntegration;
 import org.springframework.integration.dsl.IntegrationFlow;
 import org.springframework.integration.dsl.IntegrationFlows;
+import org.springframework.integration.dsl.MessageChannels;
 import org.springframework.integration.dsl.Pollers;
 import org.springframework.integration.json.ObjectToJsonTransformer;
 import org.springframework.integration.router.AbstractMessageRouter;
@@ -22,6 +23,7 @@ import org.springframework.integration.scheduling.PollerMetadata;
 import org.springframework.integration.support.MapBuilder;
 import org.springframework.integration.transformer.ObjectToStringTransformer;
 import org.springframework.messaging.Message;
+import org.springframework.messaging.MessageHeaders;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 
 import java.util.HashMap;
@@ -33,47 +35,7 @@ import java.util.HashMap;
 public class IntegrationConfig {
 
     @Autowired
-    private LoggingChannelInterceptor loggingChannelInterceptor;
-
-    @Bean
-    @BridgeFrom(value = "inputChannel", poller = @Poller(fixedDelay = "5000", maxMessagesPerPoll = "10"))
-    public PublishSubscribeChannel outputChannel() {
-        return new PublishSubscribeChannel(executor());
-    }
-
-    @Bean
-    @BridgeTo(value = "outputChannel", poller = @Poller(fixedDelay = "5000", maxMessagesPerPoll = "10"))
-    public QueueChannel inputChannel() {
-        QueueChannel channel = new QueueChannel();
-        channel.addInterceptor(loggingChannelInterceptor);
-        return channel;
-    }
-
-    @Bean
-    public TaskExecutor executor() {
-        return new ThreadPoolTaskExecutor();
-    }
-
-    @Bean
-    public CustomTransformer customTransformer() {
-        return new CustomTransformer();
-    }
-
-//    @ServiceActivator(inputChannel = "inputChannel", outputChannel = "outputChannel", poller = @Poller(maxMessagesPerPoll = "10"))
-//    @Bean
-//    public AbstractMessageRouter payloadTypeRouter() {
-//        return new CustomRouter();
-//    }
-
-    @Bean
-    public QueueChannel integerChannel() {
-        return new QueueChannel(20);
-    }
-
-    @Bean
-    public QueueChannel stringChannel() {
-        return new QueueChannel(20);
-    }
+    private PersonDirectoryService personDirectoryService;
 
     @Bean
     public DirectChannel directChannel() {
@@ -85,49 +47,29 @@ public class IntegrationConfig {
         return new DirectChannel();
     }
 
-    @Bean
-    public ObjectToJsonTransformer objectToStringTransformer() {
-        return new ObjectToJsonTransformer();
-    }
-
-    @Bean
-    public RecipientListRouter customRouter() {
-        RecipientListRouter router = new RecipientListRouter();
-        router.addRecipient("integerChannel");
-        router.addRecipient("stringChannel");
-        return router;
-    }
-
-    @Bean
-    public AbstractMessageRouter msgRouter() {
-        return new CustomRouter();
-    }
-
-    @Bean
-    public IntegrationFlow integer() {
-        return IntegrationFlows.from("integerChannel")
-                .handle(m -> System.out.println(m.getPayload()))
-                .get();
-    }
-    @Bean
-    public IntegrationFlow string() {
-        return IntegrationFlows.from("stringChannel")
-                .handle(m -> System.out.println("String" + m.getPayload()))
-                .get();
-    }
-
     @Bean(name = PollerMetadata.DEFAULT_POLLER)
     public PollerMetadata poller() {
         return Pollers.fixedRate(500).get();
     }
-
     @Bean
-    public IntegrationFlow messageSender() {
-        return IntegrationFlows.from("directChannel")
-                .headerFilter("privateKey")
-                .enrichHeaders(new HashMap<String, Object>() {{ put("type", "person"); put("index", "1"); }})
-                .transform(objectToStringTransformer())
-                .route(m -> m.getPayload(), r -> )
+    public IntegrationFlow personsFlow() {
+        return IntegrationFlows.from(personDirectoryService, "findNewPerson")
+                .channel(MessageChannels.queue())
+                .handle("emailsService", "sendEmail")
                 .get();
     }
+
+    @Bean
+    public IntegrationFlow flow() {
+        return IntegrationFlows.from(EnhancedPrinterGateway.class)
+                .channel("directChannel")
+                .handle((Person person, MessageHeaders h) -> {
+                    System.out.println(h.get("type"));
+                    return person;
+                })
+                .handle("uppercaseService", "execute")
+                .channel("resultChannel")
+                .get();
+    }
+
 }

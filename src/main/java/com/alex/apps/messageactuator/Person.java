@@ -17,14 +17,6 @@ public class Person {
         this.firstName = firstName;
     }
 
-    @Override
-    public String toString() {
-        return "Person{" +
-                "firstName='" + firstName + '\'' +
-                ", lastName='" + lastName + '\'' +
-                '}';
-    }
-
     public String getLastName() {
         return lastName;
     }
