@@ -12,10 +12,7 @@ import org.springframework.integration.channel.DirectChannel;
 import org.springframework.integration.channel.PublishSubscribeChannel;
 import org.springframework.integration.channel.QueueChannel;
 import org.springframework.integration.config.EnableIntegration;
-import org.springframework.integration.dsl.IntegrationFlow;
-import org.springframework.integration.dsl.IntegrationFlows;
-import org.springframework.integration.dsl.MessageChannels;
-import org.springframework.integration.dsl.Pollers;
+import org.springframework.integration.dsl.*;
 import org.springframework.integration.json.ObjectToJsonTransformer;
 import org.springframework.integration.router.AbstractMessageRouter;
 import org.springframework.integration.router.RecipientListRouter;
@@ -36,6 +33,12 @@ public class IntegrationConfig {
 
     @Autowired
     private PersonDirectoryService personDirectoryService;
+
+    @Autowired
+    private FileAdapter fileAdapter;
+
+    @Autowired
+    private FilePrinter filePrinter;
 
     @Bean
     public DirectChannel directChannel() {
@@ -69,6 +72,17 @@ public class IntegrationConfig {
                 })
                 .handle("uppercaseService", "execute")
                 .channel("resultChannel")
+                .get();
+    }
+
+    @Bean
+    public IntegrationFlow fileFlow() {
+        return IntegrationFlows.from(fileAdapter, "readFile")
+                .channel(MessageChannels.publishSubscribe())
+                .transform(filePrinter, "printFile")
+                .gateway(FilesGateway.class)
+                .channel(MessageChannels.direct())
+                .handle("fileWriterAdapter", "writeFile")
                 .get();
     }
 

@@ -1,5 +1,7 @@
 package com.alex.apps.messageactuator;
 
+import jdk.nashorn.internal.objects.annotations.Getter;
+
 public class Person {
     private String firstName;
     private String lastName;
@@ -23,5 +25,13 @@ public class Person {
 
     public void setLastName(String lastName) {
         this.lastName = lastName;
+    }
+
+    @Override
+    public String toString() {
+        return "Person{" +
+                "firstName='" + firstName + '\'' +
+                ", lastName='" + lastName + '\'' +
+                '}';
     }
 }
